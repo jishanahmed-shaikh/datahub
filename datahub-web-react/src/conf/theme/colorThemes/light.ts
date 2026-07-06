@@ -21,7 +21,7 @@ const lightTheme: ColorTheme = {
     bgHover: colors.gray400,
     text: colors.gray800,
     textSecondary: colors.gray700,
-    textTertiary: colors.gray600,
+    textTertiary: colors.gray700,
     textBrand: colors.violet600,
     textBrandOnBgFill: colors.gray0,
     textOnFillBrand: colors.gray0,
@@ -46,6 +46,7 @@ const lightTheme: ColorTheme = {
     iconInformation: colors.blue600,
     iconSuccess: colors.green200,
     iconWarning: colors.yellow700,
+    iconOnFillBrand: colors.gray0,
     buttonFillBrand: colors.violet600,
     buttonFillFocus: colors.violet600,
     buttonSurfaceBrandFocus: colors.violet200,
@@ -66,6 +67,7 @@ const lightTheme: ColorTheme = {
     borderError: colors.red300,
     borderSuccess: colors.green300,
     borderWarning: colors.yellow800,
+    borderWhite: colors.gray0,
     // Interactive states: Hover
     textHover: colors.violet600,
     iconHover: colors.violet500,
@@ -96,6 +98,7 @@ const lightTheme: ColorTheme = {
     shadowInset: 'inset 0px 1px 3px rgba(0, 0, 0, 0.08)',
     shadowNavbar: '0px 2px 10px rgba(0, 0, 0, 0.08)',
     shadowDropBrandColor: 'rgba(33, 23, 95, 0.3)',
+    shadowViewSelect: '0px 525px 20px 500px rgba(0, 0, 0, 0.12), 0px 65px 60px 0px rgba(0, 0, 0, 0.12)',
 
     // Overlays
     overlayLight: 'rgba(0, 0, 0, 0.05)',
@@ -228,7 +231,23 @@ const lightTheme: ColorTheme = {
     colorPickerBrown: colors.brown300,
     colorPickerDarkGreen: colors.darkgreen300,
     colorPickerOlive: colors.olive300,
-    colorPickerDefault: colors.gray1200,
+    colorPickerDefault: colors.violet600,
+
+    // Glossary Color Palette
+    glossaryPaletteViolet: colors.violet400,
+    glossaryPalettePurple: colors.violet500,
+    glossaryPaletteLightBlue: colors.trueblue100,
+    glossaryPaletteBlue: colors.trueblue300,
+    glossaryPaletteTeal: colors.cyan200,
+    glossaryPaletteGreen: colors.mudgreen500,
+    glossaryPaletteLime: colors.olive200,
+    glossaryPaletteLightOrange: colors.trueyellow200,
+    glossaryPaletteMustard: colors.yellow600,
+    glossaryPaletteOrange: colors.orange400,
+    glossaryPalettePeach: colors.orange300,
+    glossaryPaletteRed: colors.wine600,
+    glossaryPaletteMagenta: colors.pink300,
+    glossaryPaletteColdGrey: colors.gray600,
 };
 
 export default lightTheme;

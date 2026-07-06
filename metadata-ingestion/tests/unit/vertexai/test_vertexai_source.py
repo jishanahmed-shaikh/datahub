@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+from google.api_core.exceptions import NotFound
 from google.cloud.aiplatform import ExperimentRun, PipelineJob
 from google.cloud.aiplatform.metadata import constants as metadata_constants
 from google.cloud.aiplatform.metadata.context import Context as MetadataContext
@@ -12,6 +14,9 @@ from google.cloud.aiplatform_v1.types import PipelineJob as PipelineJobType
 
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.ingestion.api.common import PipelineContext
+from datahub.ingestion.source.state.stale_entity_removal_handler import (
+    StatefulStaleMetadataRemovalConfig,
+)
 from datahub.ingestion.source.vertexai.vertexai import VertexAIConfig, VertexAISource
 from datahub.ingestion.source.vertexai.vertexai_experiment_extractor import (
     VertexAIExperimentExtractor,
@@ -20,6 +25,7 @@ from datahub.ingestion.source.vertexai.vertexai_models import (
     ExperimentMetadata,
     VertexAIResourceCategoryKey,
 )
+from datahub.ingestion.source.vertexai.vertexai_state import VertexAIStateHandler
 from datahub.metadata.schema_classes import (
     DataProcessInstancePropertiesClass,
 )
@@ -409,6 +415,24 @@ def test_list_experiments_excludes_tensorboard_and_wraps_the_rest(
     assert experiments[0]._metadata_context is regular_ctx
 
 
+def test_list_experiments_returns_empty_on_not_found(
+    experiment_extractor: VertexAIExperimentExtractor,
+) -> None:
+    """Projects without a Vertex AI Metadata Store return 404 — must skip, not crash."""
+    with (
+        patch(
+            "datahub.ingestion.source.vertexai.vertexai_experiment_extractor.rate_limited_gapic_list",
+            side_effect=NotFound("Requested Metadata Store default not found"),
+        ),
+        patch.object(experiment_extractor, "_metadata_store_parent", return_value="p"),
+    ):
+        experiments = experiment_extractor._list_experiments_rate_limited()
+
+    assert experiments == []
+    warning_titles = [w.title for w in experiment_extractor.report.warnings]
+    assert "Vertex AI Metadata Store not found" in warning_titles
+
+
 def test_list_experiment_runs_combines_context_and_execution_nodes(
     experiment_extractor: VertexAIExperimentExtractor,
 ) -> None:
@@ -440,3 +464,43 @@ def test_list_experiment_runs_combines_context_and_execution_nodes(
 
     assert len(runs) == 2
     assert all(isinstance(r, ExperimentRun) for r in runs)
+
+
+# ---------------------------------------------------------------------------
+# VertexAIStateHandler — stateful_ingestion=None (default) must not crash
+# ---------------------------------------------------------------------------
+
+
+def _make_state_handler(
+    stateful_ingestion_config: Optional[StatefulStaleMetadataRemovalConfig] = None,
+) -> VertexAIStateHandler:
+    """Build a VertexAIStateHandler with a minimal mock source."""
+    mock_source = MagicMock()
+    mock_source.state_provider.is_stateful_ingestion_configured.return_value = False
+    mock_source.ctx.run_id = "test-run"
+    mock_source.ctx.pipeline_name = "test-pipeline"
+    return VertexAIStateHandler(
+        source=mock_source,
+        stateful_ingestion_config=stateful_ingestion_config,
+    )
+
+
+def test_state_handler_no_stateful_ingestion_config_does_not_crash() -> None:
+    """Pipeline must not crash when stateful_ingestion is not configured (the default).
+
+    Regression test for the bug introduced in PR #16176 where `config.stateful_ingestion or config`
+    passed the entire VertexAIConfig as the stateful_ingestion_config when no stateful ingestion
+    was configured, causing AttributeError on .ignore_old_state / .ignore_new_state.
+    """
+    handler = _make_state_handler(stateful_ingestion_config=None)
+
+    # These must not raise AttributeError
+    assert handler.get_last_update_time("model") is None
+    assert handler.create_checkpoint() is None
+
+
+def test_state_handler_checkpointing_disabled_returns_empty_state() -> None:
+    """get_last_checkpoint_state returns an empty state when checkpointing is off."""
+    handler = _make_state_handler(stateful_ingestion_config=None)
+    state = handler.get_last_checkpoint_state()
+    assert state.last_update_times == {}
